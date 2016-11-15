@@ -1,5 +1,5 @@
 # TmuxSharing
-some tmux commands to sharing TCL screen
+some tmux commands to sharing TCL screen between different users
 
 step 1: Run init.sh first
 
