@@ -27,15 +27,15 @@ int main(int argc , char *argv[]){
     parseFlags(argc , argv);
     //generate session
     system("tmux -S /tmp/.`whoami`-S new -d -s `whoami`");
-    system("chmod 777 /tmp/.`whoami`-S");
+    system("chmod 666 /tmp/.`whoami`-S");
    
     //give attach exe
     giveExe();
 
     //set ACL for specificUser
     if(specificUser)
-        system("chmod 700 /tmp/.`whoami`-S") , 
-        sprintf(cmd , "setfacl -m u:%s:--x /tmp/.`whoami`-S" , userName) , 
+        system("chmod 600 /tmp/.`whoami`-S") , 
+        sprintf(cmd , "setfacl -m u:%s:rw- /tmp/.`whoami`-S" , userName) , 
         system(cmd) == 0 ? puts("ACL setted") : puts("ACL ERR") , exit(1) , 
         system("chmod 700 /tmp/`whoami`-ShrSpt") , 
         sprintf(cmd , "setfacl -m u:%s:--x /tmp/`whoami`-ShrSpt" , userName) , 

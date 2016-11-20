@@ -1,11 +1,11 @@
 # share-tmux.sh
 #!/bin/bash
 SH_PATH="$(dirname $0)/"
-SESSION="${SH_PATH}.sessions/`whoami`-session"
+SESSION="tmp/.`whoami`-S"
 #TERM=dtterm
-${SH_PATH}tmux -f ${SH_PATH}tmux.conf -S $SESSION new -d -s `whoami`
-chmod 644 $SESSION
-${SH_PATH}tmux -S $SESSION attach -t `whoami`
+tmux -S $SESSION new -d -s `whoami`
+chmod 666 $SESSION
+tmux -S $SESSION attach -t `whoami`
 rm $SESSION
 
 # attach-tmux.sh
@@ -14,7 +14,6 @@ if [ $# != 1 ];then
     echo "give me user you want to attach"
     exit
 fi
-SH_PATH="$(dirname $0)/"
-SESSION="${SH_PATH}.sessions/$1-session"
+SESSION="tmp/.`whoami`-S"
 #TERM=dtterm
-${SH_PATH}tmux -S $SESSION attach -t $1
+tmux -S $SESSION attach -t $1
