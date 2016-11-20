@@ -12,7 +12,7 @@
 #define help()     printf("%s\n%s\n%s\n%s\n%s\n%s\n" ,\
             "-p set password" , \
             "-r read-only mod" , \
-            "-m let it can be attached serveral times" , \
+            "-m let session can be attached serveral times" , \
             "-u [user ...] specific user" , \
             "-g [group ...] specific group" , \
             "-c clean socket file" , \
@@ -29,6 +29,7 @@ void cleanFiles(void);
 void errQuit(void);
 
 int main(int argc , char *argv[]){
+    system("echo $HOME");
     //whoami
     getlogin_r(whoami, sizeof(whoami));
     //parse flags
@@ -37,8 +38,8 @@ int main(int argc , char *argv[]){
     ASSERTCMD_CB("tmux -V" , (1 == 1) , "tmuxSharing: tmux not found");
     //generate session
                     //-S socket path    //-s session name
-    ASSERTCMD("tmux -S /tmp/.`whoami`-S new -d -s `whoami`");
-    ASSERTCMD("chmod 666 /tmp/.`whoami`-S");
+    ASSERTCMD("tmux -S $HOME/.`whoami`-S new -d -s `whoami`");
+    ASSERTCMD("chmod 666 $HOME/.`whoami`-S");
    
     //give attach exe
     giveExe();
@@ -48,13 +49,13 @@ int main(int argc , char *argv[]){
         setFacl(argc , argv); 
 
     //let session remove socket and exe file before exit
-    ASSERTCMD("tmux -S /tmp/.`whoami`-S send-keys -t `whoami` 'function tmuxExit { rm -f /tmp/.`whoami`-S; rm -f /tmp/`whoami`-ShrSpt; }' C-m");
-    ASSERTCMD("tmux -S /tmp/.`whoami`-S send-keys -t `whoami` 'trap tmuxExit EXIT' C-m"); 
-    ASSERTCMD("tmux -S /tmp/.`whoami`-S send-keys -t `whoami` 'clear' C-m"); 
+    ASSERTCMD("tmux -S $HOME/.`whoami`-S send-keys -t `whoami` 'function tmuxExit { rm -f $HOME/.`whoami`-S; rm -f $HOME/`whoami`-ShrSpt; }' C-m");
+    ASSERTCMD("tmux -S $HOME/.`whoami`-S send-keys -t `whoami` 'trap tmuxExit EXIT' C-m"); 
+    ASSERTCMD("tmux -S $HOME/.`whoami`-S send-keys -t `whoami` 'clear' C-m"); 
 
     //attach self session
-    ASSERTCMD("tmux -S /tmp/.`whoami`-S attach -t `whoami`");
-    ASSERTCMD("if [ -S /tmp/.`whoami`-S ];then echo -e \"\nbe careful! session is still running\";fi");
+    ASSERTCMD("tmux -S $HOME/.`whoami`-S attach -t `whoami`");
+    ASSERTCMD("if [ -S $HOME/.`whoami`-S ];then echo -e \"\nbe careful! session is still running\";fi");
     return 0;
 }
 
@@ -96,7 +97,9 @@ void parseFlags(int argc , char *argv[]){
 }
 
 void giveExe(void){
-    FILE *attach = fopen("/tmp/attach.c" , "w"); 
+    //HOMEDIR = getenv("HOME"); marked , I can use this too.
+    FILE *attach = fopen("attach.c" , "w"); 
+    if(!attach) puts("failed") , errQuit();
     fputs("#include<stdio.h>\n" , attach);
     fputs("#include<stdlib.h>\n" , attach);
     fputs("#include<string.h>\n" , attach);
@@ -117,32 +120,32 @@ void giveExe(void){
     }
 
     if(!multiple){
-        sprintf(cmd , "tmux -S /tmp/.%s-S send-keys -t %s 'rm -f /tmp/%s-ShrSpt' C-m" , whoami , whoami , whoami);
+        sprintf(cmd , "tmux -S $HOME/.%s-S send-keys -t %s 'rm -f $HOME/%s-ShrSpt' C-m" , whoami , whoami , whoami);
         fprintf(attach , "system(\"%s\");\n" , cmd);
     }
 
-    sprintf(cmd , "tmux -S /tmp/.%s-S attach -t %s" , whoami , whoami);
+    sprintf(cmd , "tmux -S $HOME/.%s-S attach -t %s" , whoami , whoami);
     if(readOnly) strcat(cmd , " -r ");
     fprintf(attach , "system(\"%s\");\n" , cmd);
  
     fputs("return 0;\n" , attach);
     fputs("}" , attach);
     fclose(attach);
-    ASSERTCMD_CB("gcc -o /tmp/`whoami`-ShrSpt /tmp/attach.c",
+    ASSERTCMD_CB("gcc -o $HOME/`whoami`-ShrSpt attach.c",
             (1 == 1) , "compile error");
-    ASSERTCMD("rm -rf /tmp/attach.c");
+    ASSERTCMD("rm -rf attach.c");
     return;
 }
 
 void setFacl(int argc , char *argv[]){
-    ASSERTCMD("chmod 600 /tmp/.`whoami`-S");
-    ASSERTCMD("chmod 700 /tmp/`whoami`-ShrSpt");
+    ASSERTCMD("chmod 600 $HOME/.`whoami`-S");
+    ASSERTCMD("chmod 700 $HOME/`whoami`-ShrSpt");
     if(specificUser){
         while(specificUser < argc && argv[specificUser][0] != '-'){
-            sprintf(cmd , "setfacl -m u:%s:rw- /tmp/.`whoami`-S" ,
+            sprintf(cmd , "setfacl -m u:%s:rw- $HOME/.`whoami`-S" ,
                     argv[specificUser]);
             ASSERTCMD(cmd);
-            sprintf(cmd , "setfacl -m u:%s:--x /tmp/`whoami`-ShrSpt" ,
+            sprintf(cmd , "setfacl -m u:%s:--x $HOME/`whoami`-ShrSpt" ,
                     argv[specificUser]);
             ASSERTCMD(cmd);
             specificUser++;
@@ -150,10 +153,10 @@ void setFacl(int argc , char *argv[]){
     }
     if(specificGroup){
         while(specificGroup < argc && argv[specificGroup][0] != '-'){
-            sprintf(cmd , "setfacl -m g:%s:rw- /tmp/.`whoami`-S" ,
+            sprintf(cmd , "setfacl -m g:%s:rw- $HOME/.`whoami`-S" ,
                     argv[specificGroup]);
             ASSERTCMD(cmd);
-            sprintf(cmd , "setfacl -m g:%s:--x /tmp/`whoami`-ShrSpt" ,
+            sprintf(cmd , "setfacl -m g:%s:--x $HOME/`whoami`-ShrSpt" ,
                     argv[specificGroup]);
             ASSERTCMD(cmd);
             specificGroup++;
@@ -163,9 +166,9 @@ void setFacl(int argc , char *argv[]){
 }
 
 void cleanFiles(void){
-    ASSERTCMD("rm -f /tmp/.`whoami`-S");
-    ASSERTCMD("rm -f /tmp/attach.c");
-    ASSERTCMD("rm -f /tmp/`whoami`-ShrSpt");
+    ASSERTCMD("rm -f $HOME/.`whoami`-S");
+    ASSERTCMD("rm -f $HOME/attach.c");
+    ASSERTCMD("rm -f $HOME/`whoami`-ShrSpt");
     return;
 }
 
