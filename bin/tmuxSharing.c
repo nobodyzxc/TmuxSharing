@@ -3,12 +3,19 @@
 #include<stdlib.h>
 #include<unistd.h>
 #define errMsg(x) printf("tmuxSharing: unknown option -- %s\n" , x)
-#define usage() puts("usage: tmuxSharing [-h] [-r] [-i] [-f file]")
-int readOnly = 0 , interactive = 0 , oneTime = 0 , sourceFile = 0 , passwd = 0;
-char whoami[100] , cmd[100];
+#define usage() puts("usage: tmuxSharing [-ahpru]")
+#define help()     printf("%s\n%s\n%s\n%s\n%s\n" ,\
+            "-u specific user" , \
+            "-p set password" , \
+            "-r read-only mod" ,\
+            "-a let attach once" ,\
+            "-h help menu"\
+            )
+int readOnly = 0 , oneTime = 0 , passwd = 0 , specificUser = 0;
+char whoami[100] , cmd[100] , userName[100];
 void giveExe(void);
-void help(void);
 void parseFlags(int argc , char *argv[]);
+void getAns(char * , int *);
 
 int main(int argc , char *argv[]){
     //whoami
@@ -19,14 +26,27 @@ int main(int argc , char *argv[]){
     //parse flags
     parseFlags(argc , argv);
     //generate session
-    system("tmux -S /tmp/`whoami`-tmuxSharing new -d -s `whoami`");
-    system("chmod 777 /tmp/`whoami`-tmuxSharing");
-    
+    system("tmux -S /tmp/.`whoami`-S new -d -s `whoami`");
+    system("chmod 777 /tmp/.`whoami`-S");
+   
     //give attach exe
     giveExe();
+
+    //set ACL for specificUser
+    if(specificUser)
+        system("chmod 700 /tmp/.`whoami`-S") , 
+        sprintf(cmd , "setfacl -m u:%s:--x /tmp/.`whoami`-S" , userName) , 
+        system(cmd) == 0 ? puts("ACL setted") : puts("ACL ERR") , exit(1) , 
+        system("chmod 700 /tmp/`whoami`-ShrSpt") , 
+        sprintf(cmd , "setfacl -m u:%s:--x /tmp/`whoami`-ShrSpt" , userName) , 
+        system(cmd) == 0 ? puts("ACL setted") : puts("ACL ERR") , exit(1);
+ 
     //attach self session
-    system("tmux -S /tmp/`whoami`-tmuxSharing attach -t `whoami`");
-    system("rm -rf /tmp/`whoami`-tmuxSharing");
+    system("tmux -S /tmp/.`whoami`-S attach -t `whoami`");
+    if(system("tmux -S .`whoami`-S ls") != 0){
+        system("rm -rf /tmp/.`whoami`-S");
+        puts("rm tmp session");
+    }
     return 0;
 }
 
@@ -35,34 +55,28 @@ void parseFlags(int argc , char *argv[]){
     if(argc > 1){
         for(i = 1 ; i < argc ; i++){
             if(argv[i][0] == '-')
-                if(argv[i][1] == '-')
-                    if(!strcmp("--help" , argv[i])) usage() , exit(0);
-                    else
-                        for(j = 1 ; j < strlen(argv[i]) ; j++){
-                            switch(argv[i][j]){
-                                case 'r':
-                                    readOnly = 1;
-                                    break;
-                                case 'i':
-                                    interactive = 1;
-                                    break;
-                                case 'f':
-                                    sourceFile = 1;
-                                    break;
-                                case 'a':
-                                    oneTime = 1;
-                                    break;
-                                case 'l':
-                                    passwd = 1; 
-                                    break;
-                                case 'h': 
-                                    help() , exit(0);
-                                    break;
-                                default:
-                                    errMsg(argv[i]) , usage() , exit(1);
-                            }
-                        }
-                else errMsg(argv[i]) , usage() , exit(1);
+                for(j = 1 ; j < strlen(argv[i]) ; j++){
+                    switch(argv[i][j]){
+                        case 'r':
+                            readOnly = 1;
+                            break;
+                        case 'a':
+                            oneTime = 1;
+                            break;
+                        case 'p':
+                            passwd = 1; 
+                            break;
+                        case 'u':
+                            specificUser = 1;
+                            break;
+                        case 'h': 
+                            help() , exit(0);
+                            break;
+                        default:
+                            errMsg(argv[i]) , usage() , exit(1);
+                    }
+                }
+            else errMsg(argv[i]) , usage() , exit(1);
         }
     }
     return;
@@ -70,32 +84,40 @@ void parseFlags(int argc , char *argv[]){
 
 void giveExe(void){
     FILE *attach = fopen("/tmp/attach.c" , "w"); 
+    fputs("#include<stdio.h>\n" , attach);
     fputs("#include<stdlib.h>\n" , attach);
+    fputs("#include<string.h>\n" , attach);
     fputs("int main(void){\n" , attach);
-     
+
+    if(passwd){
+        char wd[100];
+        printf("set password:") , fgets(wd , sizeof(wd) , stdin);
+        wd[strlen(wd) - 1] = 0;
+        fputs("char wd[100];" , attach);
+        fputs("printf(\"password:\");" , attach);
+        fputs("fgets(wd , sizeof(wd) , stdin);" , attach);
+        fputs("wd[strlen(wd) - 1] = 0;" , attach);
+        fprintf(attach , "if(strcmp(wd , \"%s\")){" , wd);
+        fprintf(attach , "    puts(\"incorrect password\");");
+        fprintf(attach , "    exit(1);");
+        fprintf(attach , "}");
+    }
+
     if(oneTime){
-        sprintf(cmd , "tmux -S /tmp/%s-tmuxSharing send-keys -t %s 'rm -f /tmp/tmuxSharing-%s' C-m" , whoami , whoami , whoami);
+        sprintf(cmd , "tmux -S /tmp/.%s-S send-keys -t %s 'rm -f /tmp/%s-ShrSpt' C-m" , whoami , whoami , whoami);
         fprintf(attach , "system(\"%s\");\n" , cmd);
-    }     
-    sprintf(cmd , "tmux -S /tmp/%s-tmuxSharing attach -t %s" , whoami , whoami);
+    }
+
+    sprintf(cmd , "tmux -S /tmp/.%s-S attach -t %s" , whoami , whoami);
     if(readOnly) strcat(cmd , " -r ");
     fprintf(attach , "system(\"%s\");\n" , cmd);
  
     fputs("return 0;\n" , attach);
     fputs("}" , attach);
     fclose(attach);
-    system("gcc -o /tmp/tmuxSharing-`whoami` /tmp/attach.c");
+    if(system("gcc -o /tmp/`whoami`-ShrSpt /tmp/attach.c") != 0)
+        puts("compile failed") , exit(1);
     system("rm -rf /tmp/attach.c");
     return;
 }
 
-void help(){
-    printf("%s\n%s\n%s\n%s\n%s\n" ,
-            "-i interactive setting mod" ,
-            "-r read-only mod" ,
-            "-f use source file" , 
-            "-a let attach once" , 
-            "-h | --help help menu"
-            );
-    return;
-}
