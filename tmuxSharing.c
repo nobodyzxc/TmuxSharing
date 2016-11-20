@@ -8,16 +8,16 @@
 #define ASSERTCMD_CB(cmd , func , msg) \
     system(cmd) ?  puts(msg) , func , errQuit() : 0==0
 #define errMsg(x) printf("tmuxSharing: unknown option -- %s\n" , x)
-#define usage() puts("usage: tmuxSharing [-ahpr] [-u user...] [-g group...]")
+#define usage() puts("usage: tmuxSharing [-mhpr] [-u user...] [-g group...]")
 #define help()     printf("%s\n%s\n%s\n%s\n%s\n%s\n" ,\
             "-p set password" , \
             "-r read-only mod" , \
-            "-a let attach once" , \
+            "-m let it can be attached serveral times" , \
             "-u specific user" , \
             "-g specific group" , \
             "-h help menu" \
             )
-int readOnly = 0 , oneTime = 0 , passwd = 0 , specificUser = 0 , 
+int readOnly = 0 , multiple = 0 , passwd = 0 , specificUser = 0 , 
         specificGroup = 0 , errRtn = 0;
 char whoami[100] , cmd[100];
 void giveExe(void);
@@ -34,6 +34,7 @@ int main(int argc , char *argv[]){
     //parse flags
     parseFlags(argc , argv);
     //generate session
+                    //-S socket path    //-s session name
     ASSERTCMD("tmux -S /tmp/.`whoami`-S new -d -s `whoami`");
     ASSERTCMD("chmod 666 /tmp/.`whoami`-S");
    
@@ -75,7 +76,7 @@ void parseFlags(int argc , char *argv[]){
                             BREAK = 1;
                             break;
                         case 'r': readOnly = 1; break;
-                        case 'a': oneTime = 1; break;
+                        case 'm': multiple = 1; break;
                         case 'p': passwd = 1; break;
                         case 'h': help() , exit(0); break;
                         default:
@@ -110,7 +111,7 @@ void giveExe(void){
         fprintf(attach , "}");
     }
 
-    if(oneTime){
+    if(!multiple){
         sprintf(cmd , "tmux -S /tmp/.%s-S send-keys -t %s 'rm -f /tmp/%s-ShrSpt' C-m" , whoami , whoami , whoami);
         fprintf(attach , "system(\"%s\");\n" , cmd);
     }
@@ -160,7 +161,7 @@ void errQuit(void){
     ASSERTCMD("rm -f /tmp/.`whoami`-S");
     ASSERTCMD("rm -f /tmp/attach.c");
     ASSERTCMD("rm -f /tmp/`whoami`-ShrSpt");
-    puts("ERR QUIT");
+    puts("ERROR QUIT");
     exit(1);
     return;
 }
