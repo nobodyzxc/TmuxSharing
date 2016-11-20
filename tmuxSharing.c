@@ -48,10 +48,10 @@ int main(int argc , char *argv[]){
     //attach self session
     ASSERTCMD("tmux -S /tmp/.`whoami`-S attach -t `whoami`");
     ASSERTCMD_CB("echo \"! tmux -S /tmp/.`whoami`-S ls\" | bash" , exit(0) , 
-            "detached . will not remove session");
+            "detached . will \"NOT\" remove socket");
     //! tmux -S /tmux .... ( ! op may not work in some sh version)
     ASSERTCMD("rm -f /tmp/.`whoami`-S");
-    puts("remove session");
+    puts("remove socket");
     ASSERTCMD("rm -f /tmp/`whoami`-ShrSpt");
     puts("remove shareSpot");
     return 0;
