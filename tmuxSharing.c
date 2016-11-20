@@ -7,14 +7,15 @@
 //assert and call back
 #define ASSERTCMD_CB(cmd , func , msg) \
     system(cmd) ?  puts(msg) , func , errQuit() : 0==0
-#define errMsg(x) printf("tmuxSharing: unknown option -- %s\n" , x)
-#define usage() puts("usage: tmuxSharing [-mhpr] [-u user...] [-g group...]")
+#define errMsg(x) printf("tmuxSharing: unknown option -- %c\n" , x)
+#define usage() puts("usage: tmuxSharing [-mhpr] [-u user...] [-g group...] [-c]")
 #define help()     printf("%s\n%s\n%s\n%s\n%s\n%s\n" ,\
             "-p set password" , \
             "-r read-only mod" , \
             "-m let it can be attached serveral times" , \
-            "-u specific user" , \
-            "-g specific group" , \
+            "-u [user ...] specific user" , \
+            "-g [group ...] specific group" , \
+            "-c clean socket file" , \
             "-h help menu" \
             )
 int readOnly = 0 , multiple = 0 , passwd = 0 , specificUser = 0 , 
@@ -24,15 +25,16 @@ void giveExe(void);
 void setFacl(int , char *[]);
 void parseFlags(int argc , char *argv[]);
 void getAns(char * , int *);
+void cleanFiles(void);
 void errQuit(void);
 
 int main(int argc , char *argv[]){
     //whoami
     getlogin_r(whoami, sizeof(whoami));
-    //check tmux existing
-    ASSERTCMD_CB("tmux -V" , (1 == 1) , "tmuxSharing: tmux not found");
     //parse flags
     parseFlags(argc , argv);
+    //check tmux existing
+    ASSERTCMD_CB("tmux -V" , (1 == 1) , "tmuxSharing: tmux not found");
     //generate session
                     //-S socket path    //-s session name
     ASSERTCMD("tmux -S /tmp/.`whoami`-S new -d -s `whoami`");
@@ -52,8 +54,7 @@ int main(int argc , char *argv[]){
 
     //attach self session
     ASSERTCMD("tmux -S /tmp/.`whoami`-S attach -t `whoami`");
-    ASSERTCMD("if [ -S /tmp/.`whoami`-S ];then echo -e \"\nbe careful! session is still running\"; else echo \"/tmp/.`whoami`-S not exist\"; fi");
-    //! tmux -S /tmux .... ( ! op may not work in some sh version)
+    ASSERTCMD("if [ -S /tmp/.`whoami`-S ];then echo -e \"\nbe careful! session is still running\";fi");
     return 0;
 }
 
@@ -65,6 +66,10 @@ void parseFlags(int argc , char *argv[]){
                 for(j = 1 ; j < strlen(argv[i]) ; j++){
                     BREAK = 0;
                     switch(argv[i][j]){
+                        case 'c':
+                            cleanFiles();
+                            puts("socket file removed");
+                            exit(0); break;
                         case 'u': 
                             specificUser = i + 1; 
                             while((i + 1 < argc)&&(argv[i + 1][0] != '-')) i++;
@@ -80,11 +85,11 @@ void parseFlags(int argc , char *argv[]){
                         case 'p': passwd = 1; break;
                         case 'h': help() , exit(0); break;
                         default:
-                            errMsg(argv[i]) , usage() , errQuit();
+                            errMsg(argv[i][j]) , usage() , errQuit();
                     }
                     if(BREAK) break;
                 }
-            else errMsg(argv[i]) , usage() , errQuit();
+            else usage() , errQuit();
         }
     }
     return;
@@ -157,11 +162,15 @@ void setFacl(int argc , char *argv[]){
     return;
 }
 
-void errQuit(void){
+void cleanFiles(void){
     ASSERTCMD("rm -f /tmp/.`whoami`-S");
     ASSERTCMD("rm -f /tmp/attach.c");
     ASSERTCMD("rm -f /tmp/`whoami`-ShrSpt");
-    puts("ERROR QUIT");
+    return;
+}
+
+void errQuit(void){
+    cleanFiles();
     exit(1);
     return;
 }
