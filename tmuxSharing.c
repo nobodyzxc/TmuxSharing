@@ -56,19 +56,22 @@ int main(int argc , char *argv[]){
 }
 
 void parseFlags(int argc , char *argv[]){
-    int i , j;
+    int i , j , BREAK = 0;
     if(argc > 1){
         for(i = 1 ; i < argc ; i++){
             if(argv[i][0] == '-')
                 for(j = 1 ; j < strlen(argv[i]) ; j++){
+                    BREAK = 0;
                     switch(argv[i][j]){
                         case 'u': 
                             specificUser = i + 1; 
                             while((i + 1 < argc)&&(argv[i + 1][0] != '-')) i++;
+                            BREAK = 1;
                             break;
                         case 'g': 
                             specificGroup = i + 1; 
                             while((i + 1 < argc)&&(argv[i + 1][0] != '-')) i++;
+                            BREAK = 1;
                             break;
                         case 'r': readOnly = 1; break;
                         case 'a': oneTime = 1; break;
@@ -77,6 +80,7 @@ void parseFlags(int argc , char *argv[]){
                         default:
                             errMsg(argv[i]) , usage() , errQuit();
                     }
+                    if(BREAK) break;
                 }
             else errMsg(argv[i]) , usage() , errQuit();
         }
