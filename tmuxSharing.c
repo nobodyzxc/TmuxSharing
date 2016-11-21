@@ -20,7 +20,7 @@
             )
 int readOnly = 0 , multiple = 0 , passwd = 0 , specificUser = 0 , 
         specificGroup = 0 , errRtn = 0;
-char whoami[100] , cmd[100];
+char whoami[100] = {0} , cmd[100];
 void giveExe(void);
 void setFacl(int , char *[]);
 void parseFlags(int argc , char *argv[]);
@@ -29,9 +29,18 @@ void cleanFiles(void);
 void errQuit(void);
 
 int main(int argc , char *argv[]){
-    system("echo $HOME");
     //whoami
+    
     getlogin_r(whoami, sizeof(whoami));
+    puts(whoami);
+    if(whoami[0] == 0){
+        FILE *myname = popen("whoami" , "r");
+        fgets(whoami , sizeof(whoami) , myname);
+        whoami[strlen(whoami) - 1] = 0;
+        if(whoami[0] == 0) 
+            puts("cannot get name") , exit(1);
+    } 
+    
     //parse flags
     parseFlags(argc , argv);
     //check tmux existing
@@ -125,7 +134,6 @@ void giveExe(void){
         sprintf(cmd , "tmux -S %s/.%s-S send-keys -t %s 'rm -f %s/%s-ShrSpt' C-m" , HOMEDIR , whoami , whoami , HOMEDIR , whoami);
         fprintf(attach , "system(\"%s\");\n" , cmd);
     }
-
     sprintf(cmd , "tmux -S %s/.%s-S attach -t %s" , HOMEDIR , whoami , whoami);
     if(readOnly) strcat(cmd , " -r ");
     fprintf(attach , "system(\"%s\");\n" , cmd);
