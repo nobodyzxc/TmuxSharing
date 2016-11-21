@@ -55,7 +55,7 @@ int main(int argc , char *argv[]){
 
     //attach self session
     ASSERTCMD("tmux -S $HOME/.`whoami`-S attach -t `whoami`");
-    ASSERTCMD("if [ -S $HOME/.`whoami`-S ];then echo -e \"\nbe careful! session is still running\";fi");
+    ASSERTCMD("echo \"if [ -S $HOME/.`whoami`-S ];then echo 'be careful! session is still running';fi\" | bash");
     return 0;
 }
 
@@ -71,12 +71,14 @@ void parseFlags(int argc , char *argv[]){
                             cleanFiles();
                             puts("socket file removed");
                             exit(0); break;
-                        case 'u': 
+                        case 'u':
+                            multiple = 1;
                             specificUser = i + 1; 
                             while((i + 1 < argc)&&(argv[i + 1][0] != '-')) i++;
                             BREAK = 1;
                             break;
                         case 'g': 
+                            multiple = 1;
                             specificGroup = i + 1; 
                             while((i + 1 < argc)&&(argv[i + 1][0] != '-')) i++;
                             BREAK = 1;
@@ -97,7 +99,7 @@ void parseFlags(int argc , char *argv[]){
 }
 
 void giveExe(void){
-    //HOMEDIR = getenv("HOME"); marked , I can use this too.
+    char *HOMEDIR = getenv("HOME"); //marked , I can use this too.
     FILE *attach = fopen("attach.c" , "w"); 
     if(!attach) puts("failed") , errQuit();
     fputs("#include<stdio.h>\n" , attach);
@@ -120,11 +122,11 @@ void giveExe(void){
     }
 
     if(!multiple){
-        sprintf(cmd , "tmux -S $HOME/.%s-S send-keys -t %s 'rm -f $HOME/%s-ShrSpt' C-m" , whoami , whoami , whoami);
+        sprintf(cmd , "tmux -S %s/.%s-S send-keys -t %s 'rm -f %s/%s-ShrSpt' C-m" , HOMEDIR , whoami , whoami , HOMEDIR , whoami);
         fprintf(attach , "system(\"%s\");\n" , cmd);
     }
 
-    sprintf(cmd , "tmux -S $HOME/.%s-S attach -t %s" , whoami , whoami);
+    sprintf(cmd , "tmux -S %s/.%s-S attach -t %s" , HOMEDIR , whoami , whoami);
     if(readOnly) strcat(cmd , " -r ");
     fprintf(attach , "system(\"%s\");\n" , cmd);
  
