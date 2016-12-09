@@ -1,2 +1,2 @@
 # TmuxSharing
-some tmux commands to sharing TCL screen between different users
+some tmux commands to share TCL screen between different users
