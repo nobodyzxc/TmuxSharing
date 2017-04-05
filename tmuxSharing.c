@@ -10,16 +10,16 @@
 #define errMsg(x) printf("tmuxSharing: unknown option -- %c\n" , x)
 #define usage() puts("usage: tmuxSharing [-mhpr] [-u user...] [-g group...] [-c]")
 #define help()     printf("%s\n%s\n%s\n%s\n%s\n%s\n" ,\
-            "-p set password" , \
-            "-r read-only mod" , \
-            "-m let session can be attached serveral times" , \
-            "-u [user ...] specific user" , \
-            "-g [group ...] specific group" , \
-            "-c clean socket file" , \
-            "-h help menu" \
-            )
-int readOnly = 0 , multiple = 0 , passwd = 0 , specificUser = 0 , 
-        specificGroup = 0 , errRtn = 0;
+        "-p set password" , \
+        "-r read-only mod" , \
+        "-m let session can be attached serveral times" , \
+        "-u [user ...] specific user" , \
+        "-g [group ...] specific group" , \
+        "-c clean socket file" , \
+        "-h help menu" \
+        )
+int readOnly = 0 , multiple = 0 , passwd = 0 , specificUser = 0 ,
+    specificGroup = 0 , errRtn = 0;
 char whoami[100] = {0} , cmd[100];
 void giveExe(void);
 void setFacl(int , char *[]);
@@ -30,37 +30,37 @@ void errQuit(void);
 
 int main(int argc , char *argv[]){
     //whoami
-    
+
     getlogin_r(whoami, sizeof(whoami));
     puts(whoami);
     if(whoami[0] == 0){
         FILE *myname = popen("whoami" , "r");
         fgets(whoami , sizeof(whoami) , myname);
         whoami[strlen(whoami) - 1] = 0;
-        if(whoami[0] == 0) 
+        if(whoami[0] == 0)
             puts("cannot get name") , exit(1);
-    } 
-    
+    }
+
     //parse flags
     parseFlags(argc , argv);
     //check tmux existing
     ASSERTCMD_CB("tmux -V" , (1 == 1) , "tmuxSharing: tmux not found");
     //generate session
-                    //-S socket path    //-s session name
+    //-S socket path    //-s session name
     ASSERTCMD("tmux -S $HOME/.`whoami`-S new -d -s `whoami`");
     ASSERTCMD("chmod 666 $HOME/.`whoami`-S");
-   
+
     //give attach exe
     giveExe();
 
     //set ACL for specific*
     if(specificUser || specificGroup)
-        setFacl(argc , argv); 
+        setFacl(argc , argv);
 
     //let session remove socket and exe file before exit
     ASSERTCMD("tmux -S $HOME/.`whoami`-S send-keys -t `whoami` 'function tmuxExit { rm -f $HOME/.`whoami`-S; rm -f $HOME/`whoami`-ShrSpt; }' C-m");
-    ASSERTCMD("tmux -S $HOME/.`whoami`-S send-keys -t `whoami` 'trap tmuxExit EXIT' C-m"); 
-    ASSERTCMD("tmux -S $HOME/.`whoami`-S send-keys -t `whoami` 'clear' C-m"); 
+    ASSERTCMD("tmux -S $HOME/.`whoami`-S send-keys -t `whoami` 'trap tmuxExit EXIT' C-m");
+    ASSERTCMD("tmux -S $HOME/.`whoami`-S send-keys -t `whoami` 'clear' C-m");
 
     //attach self session
     ASSERTCMD("tmux -S $HOME/.`whoami`-S attach -t `whoami`");
@@ -82,13 +82,13 @@ void parseFlags(int argc , char *argv[]){
                             exit(0); break;
                         case 'u':
                             multiple = 1;
-                            specificUser = i + 1; 
+                            specificUser = i + 1;
                             while((i + 1 < argc)&&(argv[i + 1][0] != '-')) i++;
                             BREAK = 1;
                             break;
-                        case 'g': 
+                        case 'g':
                             multiple = 1;
-                            specificGroup = i + 1; 
+                            specificGroup = i + 1;
                             while((i + 1 < argc)&&(argv[i + 1][0] != '-')) i++;
                             BREAK = 1;
                             break;
@@ -97,7 +97,7 @@ void parseFlags(int argc , char *argv[]){
                         case 'p': passwd = 1; break;
                         case 'h': help() , exit(0); break;
                         default:
-                            errMsg(argv[i][j]) , usage() , errQuit();
+                                  errMsg(argv[i][j]) , usage() , errQuit();
                     }
                     if(BREAK) break;
                 }
@@ -109,7 +109,7 @@ void parseFlags(int argc , char *argv[]){
 
 void giveExe(void){
     char *HOMEDIR = getenv("HOME"); //marked , I can use this too.
-    FILE *attach = fopen("attach.c" , "w"); 
+    FILE *attach = fopen("attach.c" , "w");
     if(!attach) puts("failed") , errQuit();
     fputs("#include<stdio.h>\n" , attach);
     fputs("#include<stdlib.h>\n" , attach);
@@ -137,7 +137,7 @@ void giveExe(void){
     sprintf(cmd , "tmux -S %s/.%s-S attach -t %s" , HOMEDIR , whoami , whoami);
     if(readOnly) strcat(cmd , " -r ");
     fprintf(attach , "system(\"%s\");\n" , cmd);
- 
+
     fputs("return 0;\n" , attach);
     fputs("}" , attach);
     fclose(attach);
